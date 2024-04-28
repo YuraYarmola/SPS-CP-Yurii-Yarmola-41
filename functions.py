@@ -37,16 +37,22 @@ class SystemMonitor:
 class CPUUsageMonitor:
     def get_cpu_count(self):
         """Get the number of logical CPUs."""
-        return psutil.cpu_count()
-
+        try:
+            return psutil.cpu_count()
+        except Exception:
+            return 0
     def get_cpu_frequency(self):
         """Get the current CPU frequency."""
-        return psutil.cpu_freq()
-
+        try:
+            return psutil.cpu_freq()
+        except Exception:
+            return 0
     def get_cpu_utilization(self):
         """Get the current CPU utilization."""
-        return psutil.cpu_percent()
-
+        try:
+            return psutil.cpu_percent()
+        except Exception:
+            return 0
 
 class MemoryUsageMonitor:
     def __init__(self):
@@ -57,30 +63,39 @@ class MemoryUsageMonitor:
         """
         Get the available physical memory in bytes.
         """
-
-        return psutil.virtual_memory().available
+        try:
+            return psutil.virtual_memory().available
+        except Exception:
+            return 0
 
     @staticmethod
     def get_total_memory():
         """
         Get the available physical memory in bytes.
         """
-        return psutil.virtual_memory().total
-
+        try:
+            return psutil.virtual_memory().total
+        except Exception:
+            return 0
     @staticmethod
     def get_used_memory():
         """
         Get the used physical memory in bytes.
         """
-        return psutil.virtual_memory().used
-
+        try:
+            return psutil.virtual_memory().used
+        except Exception:
+            return 0
     @staticmethod
     def get_memory_usage_percentage():
         """
         Get the percentage of used physical memory.
         """
-        return psutil.virtual_memory().percent
-
+        try:
+            return psutil.virtual_memory().percent
+        except Exception as e:
+            print(e)
+            return 0
 
 class DiskSpaceMonitor:
     def __init__(self):
