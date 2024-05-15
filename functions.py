@@ -1,78 +1,9 @@
-import clr
-import psutil  # Для отримання інформації про систему
-import time  # Для затримки між оновленнями даних
+import platform
 import GPUtil
-import wmi
-
-openhardwaremonitor_hwtypes = ['Mainboard', 'SuperIO', 'CPU', 'RAM', 'GpuNvidia', 'GpuAti', 'TBalancer',
-                               'Heatmaster', 'HDD']
-cputhermometer_hwtypes = ['Mainboard', 'SuperIO', 'CPU', 'GpuNvidia', 'GpuAti', 'TBalancer', 'Heatmaster', 'HDD']
-
-openhardwaremonitor_sensortypes = ['Voltage', 'Clock', 'Temperature', 'Load', 'Fan', 'Flow', 'Control', 'Level',
-                                   'Factor', 'Power', 'Data', 'SmallData']
-cputhermometer_sensortypes = ['Voltage', 'Clock', 'Temperature', 'Load', 'Fan', 'Flow', 'Control', 'Level']
-
-
-class Sensor:
-    def __init__(self):
-        self.sensors = {
-            "Temperature": []
-        }
-        self.handle = self.__initialize_openhardwaremonitor()
-        self.fetch_sensors(self.handle)
-
-        # for key in self.sensors.keys():
-        #     print(f"\n{key}:")
-        #     for sensor in self.sensors[key]:
-        #
-        #         print(sensor.Hardware.Name, sensor.Hardware.HardwareType, sensor.Value)
-
-    def __initialize_openhardwaremonitor(self):
-        file = r'D:\LPNU\SEMESTR 6\SPZ\KURSOVA\SystemMonitor\SPS-CP-Yurii-Yarmola-41\OpenHardwareMonitorLib.dll'
-        clr.AddReference(file)
-
-        from OpenHardwareMonitor import Hardware
-
-        handle = Hardware.Computer()
-        handle.MainboardEnabled = True
-        handle.CPUEnabled = True
-        handle.RAMEnabled = True
-        handle.GPUEnabled = True
-        handle.HDDEnabled = True
-        handle.Open()
-        return handle
-
-    def fetch_sensors(self, handle):
-        for i in handle.Hardware:
-            i.Update()
-            for sensor in i.Sensors:
-
-                if str(sensor.SensorType) in self.sensors.keys():
-                    self.sensors[str(sensor.SensorType)].append(sensor)
-                else:
-                    self.sensors[str(sensor.SensorType)] = [sensor]
-
-            for j in i.SubHardware:
-                j.Update()
-                for subsensor in j.Sensors:
-                    if str(subsensor.SensorType) in self.sensors.keys():
-                        self.sensors[str(subsensor.SensorType)].append(subsensor)
-                    else:
-                        self.sensors[str(subsensor.SensorType)] = [subsensor]
-
-    def parse_sensor(self, sensor):
-        if sensor.Value is not None:
-            if type(sensor).__module__ == 'OpenHardwareMonitor.Hardware':
-                sensortypes = openhardwaremonitor_sensortypes
-                hardwaretypes = openhardwaremonitor_hwtypes
-                hardwaretypes = openhardwaremonitor_hwtypes
-            else:
-                return
-
-            if 'Temperature' in str(sensor.SensorType):
-                print(u"%s %s Temperature Sensor #%i %s - %s\u00B0C" % (
-                    hardwaretypes[sensor.Hardware.HardwareType], sensor.Hardware.Name, sensor.Index, sensor.Name,
-                    sensor.Value))
+import psutil
+import time
+import WinTmp
+import win32evtlog
 
 
 class SystemMonitor:
@@ -104,15 +35,24 @@ class SystemMonitor:
 
 
 class CPUUsageMonitor:
-    def __init__(self):
-        pass
-
-    def get_cpu_usage(self):
-        pass
-
-    def notify_if_threshold_exceeded(self):
-        pass
-
+    def get_cpu_count(self):
+        """Get the number of logical CPUs."""
+        try:
+            return psutil.cpu_count()
+        except Exception:
+            return 0
+    def get_cpu_frequency(self):
+        """Get the current CPU frequency."""
+        try:
+            return psutil.cpu_freq()
+        except Exception:
+            return 0
+    def get_cpu_utilization(self):
+        """Get the current CPU utilization."""
+        try:
+            return psutil.cpu_percent()
+        except Exception:
+            return 0
 
 class MemoryUsageMonitor:
     def __init__(self):
@@ -123,30 +63,39 @@ class MemoryUsageMonitor:
         """
         Get the available physical memory in bytes.
         """
-
-        return psutil.virtual_memory().available
+        try:
+            return psutil.virtual_memory().available
+        except Exception:
+            return 0
 
     @staticmethod
     def get_total_memory():
         """
         Get the available physical memory in bytes.
         """
-        return psutil.virtual_memory().total
-
+        try:
+            return psutil.virtual_memory().total
+        except Exception:
+            return 0
     @staticmethod
     def get_used_memory():
         """
         Get the used physical memory in bytes.
         """
-        return psutil.virtual_memory().used
-
+        try:
+            return psutil.virtual_memory().used
+        except Exception:
+            return 0
     @staticmethod
     def get_memory_usage_percentage():
         """
         Get the percentage of used physical memory.
         """
-        return psutil.virtual_memory().percent
-
+        try:
+            return psutil.virtual_memory().percent
+        except Exception as e:
+            print(e)
+            return 0
 
 class DiskSpaceMonitor:
     def __init__(self):
@@ -183,68 +132,94 @@ class DiskSpaceMonitor:
 
 
 class NetworkTrafficMonitor:
-    def __init__(self):
-        pass
-
-    def get_network_traffic(self):
-        pass
-
-    def notify_if_threshold_exceeded(self):
-        pass
-
-
-class SystemEventMonitor:
-    def __init__(self):
-        pass
-
-    def get_system_events(self):
-        pass
-
-    def notify_if_critical_event_detected(self):
-        pass
+    def get_network_usage(self):
+        net_stats = psutil.net_io_counters(pernic=True)
+        networks = []
+        for interface, stats in net_stats.items():
+            networks.append({
+                'Interface': interface,
+                "Bytes send": stats.bytes_sent,
+                "Bytes received": stats.bytes_recv,
+                "Packets sent": stats.packets_sent,
+                "Packets received": stats.packets_recv,
+                "Error in/out": f"{stats.errin}/{stats.errout}",
+                "Drop in/out": f"{stats.dropin}/{stats.dropout}",
+            })
+        return networks
 
 
 class Temperature:
-    def __init__(self, sensors):
-        self.sensors = sensors
 
-    def get_cpu_temperature_sensors(self):
-        sensors_list = []
-        if "Temperature" in str(self.sensors.keys()):
-            for sensor in self.sensors["Temperature"]:
-                if 'cpu' in str(sensor.Hardware.HardwareType).lower():
-                    sensors_list.append(sensor)
-        return sensors_list
+    def get_cpu_temperature(self):
+        """ CPU temperature """
+        return WinTmp.CPU_Temp()
 
     def get_gpu_temperature(self):
-        sensors_list = []
-        if "Temperature" in str(self.sensors.keys()):
-            for sensor in self.sensors["Temperature"]:
-                if 'gpu' in str(sensor.Hardware.HardwareType).lower():
-                    sensors_list.append(sensor)
-        return sensors_list
-
-    def notify_if_threshold_exceeded(self):
-        pass
+        """ GPU temperature """
+        return WinTmp.GPU_Temp()
 
 
 class SystemInformation:
-    def __init__(self):
-        pass
 
     def get_basic_system_info(self):
-        pass
+        system_info = {'Platform': platform.platform(), 'Architecture': " ".join(platform.architecture()),
+                       'System_name': platform.system() + " " + platform.release(), 'Version': platform.version(),
+                       'Machine': platform.machine(), 'Processor': platform.processor(),
+                       'Cpu Count': psutil.cpu_count(),
+                       "Ram Size": str(round(psutil.virtual_memory().total / 1024**3, 2)) + " GB",
+                       }
 
-    def get_installed_devices_info(self):
-        pass
+        gpus = GPUtil.getGPUs()
+        for index, gpu in enumerate(gpus):
+            system_info[f'GPU {index}'] = gpu.name
 
-    def get_network_info(self):
-        pass
+        return system_info
+
+    def get_event_logs(self, total_logs=50, logtype="System"):
+        print(logtype)
+        server = None  # None implies local machine
+        hand = win32evtlog.OpenEventLog(server, logtype)
+        flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+        total = 0
+        logs = []
+        try:
+            events = win32evtlog.ReadEventLog(hand, flags, 0)
+            while events:
+                for event in events:
+
+                    logs.append(
+                        {"Event ID": event.EventID,
+                            "Time": event.TimeGenerated,
+                         "Source Name": event.SourceName,
+
+                         "Message": str(event.StringInserts),
+                         }
+                    )
+                    if total > total_logs:
+                        break
+                    total += 1
+                if total > total_logs:
+                    break
+                events = win32evtlog.ReadEventLog(hand, flags, 0)
+        finally:
+            win32evtlog.CloseEventLog(hand)
+        return logs
 
 
-class NotificationManager:
-    def __init__(self):
-        pass
+class Processes:
+    def get_processes(self):
+        processes = []
+        for process in psutil.process_iter():
+            try:
+                # Get process details
+                process_info = {
+                    'pid': process.pid,
+                    'name': process.name(),
+                    'cpu_percent': process.cpu_percent(),
+                    "memory": process.memory_info().rss / 1024 / 1024,
+                }
+                processes.append(process_info)
 
-    def send_notification(self):
-        pass
+            except psutil.Error:
+                pass
+        return processes
