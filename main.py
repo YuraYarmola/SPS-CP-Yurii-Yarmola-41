@@ -27,7 +27,9 @@ def main(page: ft.Page):
             if destination_label != e.control.destinations[e.control.selected_index].label:
                 break
             if e.control.destinations[e.control.selected_index].label == "Usage":
+
                 if time.time() - timer > 1 or first:
+                    start_time = time.time()
                     first = False
                     ram_usage = MemoryUsageMonitor.get_memory_usage_percentage()  # 75%
                     cpu_usage = CPUUsageMonitor().get_cpu_utilization()
@@ -113,9 +115,10 @@ def main(page: ft.Page):
                                         ft.Text("\nDisks Information:"),
 
                                     ] + disks
-                    timer = time.time()
-                    page.update()
 
+                    page.update()
+                    print("page update time:", time.time() - timer)
+                    timer = time.time()
             else:
                 break
 
